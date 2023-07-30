@@ -16,7 +16,7 @@ import openpyxl
 
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 
 # document = Document("files\SCE3-2023-079_Corrected.docx")
 # files\SCE3-2023-094_Corrected.docx
@@ -171,23 +171,42 @@ class CETManuscripts():
 # Creating a Web App
 app = Flask(__name__)
 
-@app.route('/', methods = ['GET'])
-def get_CET_info():
-    path = askdirectory(title='Select Folder') # shows dialog box and return the path
+# @app.route('/', methods = ['GET'])
+def get_CET_info(path: str):
+    # path = askdirectory(title='Select Folder') # shows dialog box and return the path
     # file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file)]
-    file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file and 'PRES23' in file)]
-    # file_list = ["+PRES23_0184_M_v_03_Author.docx"]
-    # file_list = ["+PRES23_0340_rev_M_v2_Review.docx"]
-    # file_list = ["+PRES23_0002_rev_M_v2_Review.docx"]
-    CET_manuscripts = CETManuscripts(file_list = file_list, file_path = path)
-    CET_manuscripts.write_to_excel(path)
+    try:
+        file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file and 'PRES23' in file)]
+        # file_list = ["+PRES23_0184_M_v_03_Author.docx"]
+        # file_list = ["+PRES23_0340_rev_M_v2_Review.docx"]
+        # file_list = ["+PRES23_0002_rev_M_v2_Review.docx"]
+        CET_manuscripts = CETManuscripts(file_list = file_list, file_path = path)
+        CET_manuscripts.write_to_excel(path)
 
-    response = {
-        'message': f"Success! All CET info in the folder is extracted and saved to {path}/PRES23_CET_Info.xlsx"
-    }
+        response = {
+            'message': f"Success! All CET info in the folder is extracted and saved to {path}/PRES23_CET_Info.xlsx"
+        }
 
-    return jsonify(response), 200
+        return jsonify(response), 200
 
+    except Exception as e:
+        response = {
+            'message': f"Errors!"
+        }
+        return jsonify(response), 400
+
+@app.route('/', methods=['GET', 'POST'])
+def get_folder_path():
+    if request.method == 'POST':
+        folder_path = request.form['folder_path']
+        response = get_CET_info(folder_path)
+        if response[1] == 200:
+            excel_path = f"{folder_path}/PRES23_CET_Info.xlsx"
+            # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
+            # return f"The folder path you entered is: {folder_path}"
+            return render_template('index.html', success = True, folder_path = excel_path)
+        else:
+            return render_template('index.html', error = True)
 # Running the app
 # app.run(host = '0.0.0.0', port = 5000)
 

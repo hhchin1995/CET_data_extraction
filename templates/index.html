@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Folder Path Input</title>
+</head>
+<body>
+    <h1>Enter the folder path:</h1>
+    <form method="POST">
+        <input type="text" name="folder_path" placeholder="Enter folder path" required>
+        <button type="submit">Submit</button>
+    </form>
+    {% if error %}
+        <p id="error-message" style="color: red;">Errors happen! Please check if your folder path is correct!</p>
+    {% endif %}
+    {% if success %}
+        {% if folder_path %}
+            <p id="success-message" style="color: green;">Success! All CET info is created in {{ folder_path }} </p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
