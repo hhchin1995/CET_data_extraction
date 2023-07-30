@@ -207,6 +207,7 @@ def get_folder_path():
             return render_template('index.html', success = True, folder_path = excel_path)
         else:
             return render_template('index.html', error = True)
+    return render_template('index.html')
 # Running the app
 # app.run(host = '0.0.0.0', port = 5000)
 
