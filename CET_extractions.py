@@ -193,7 +193,7 @@ def get_CET_info(path: str):
         response = {
             'message': f"Errors! {e}"
         }
-        return jsonify(response), 400
+        return str(e), 400
 
 @app.route('/', methods=['GET', 'POST'])
 def get_folder_path():
