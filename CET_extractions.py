@@ -145,6 +145,7 @@ class CETManuscripts():
             filepath = f"{file_path}//{filename}"
             # filepath = f"{filename}"
             self.all_info.append(CETExtraction(filename = filepath)) 
+        shutil.rmtree(app.config['UPLOAD_FOLDER'], ignore_errors= True)
     
     def write_to_excel(self, file_path: str):
         rows_of_data_in_excel = []
