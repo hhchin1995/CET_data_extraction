@@ -139,7 +139,7 @@ class CETManuscripts():
     def __init__(self, file_list: List[str], file_path: str):
         self.all_info = []
         for file_name in file_list:
-            filepath = f"{file_path}/{file_name}"
+            filepath = f"{file_path}\{file_name}"
             self.all_info.append(CETExtraction(filename = filepath)) 
     
     def write_to_excel(self, file_path: str):
@@ -200,13 +200,13 @@ def get_folder_path():
     if request.method == 'POST':
         folder_path = request.form['folder_path']
         response = get_CET_info(folder_path)
-        # if response[1] == 200:
-        excel_path = f"{folder_path}\PRES23_CET_Info.xlsx"
-            # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
-            # return f"The folder path you entered is: {folder_path}"
-        return render_template('index.html', success = True, folder_path = excel_path)
-        # else:
-        #     return render_template('index.html', error = True)
+        if response[1] == 200:
+            excel_path = f"{folder_path}\PRES23_CET_Info.xlsx"
+                # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
+                # return f"The folder path you entered is: {folder_path}"
+            return render_template('index.html', success = True, folder_path = excel_path)
+        else:
+            return render_template('index.html', error = True)
     return render_template('index.html')
 # Running the app
 # app.run(host = '0.0.0.0', port = 5000)
