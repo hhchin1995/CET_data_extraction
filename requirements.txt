@@ -1,0 +1,6 @@
+pandas==1.4.2
+openpyxl==3.0.10
+flask==2.2.2
+python-docx==0.8.11
+
+
