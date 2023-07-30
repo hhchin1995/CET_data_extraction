@@ -201,7 +201,7 @@ def get_folder_path():
         folder_path = request.form['folder_path']
         response = get_CET_info(folder_path)
         if response[1] == 200:
-            excel_path = f"{folder_path}/PRES23_CET_Info.xlsx"
+            excel_path = f"{folder_path}\PRES23_CET_Info.xlsx"
             # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
             # return f"The folder path you entered is: {folder_path}"
             return render_template('index.html', success = True, folder_path = excel_path)
