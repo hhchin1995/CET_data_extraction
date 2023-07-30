@@ -16,7 +16,9 @@ import openpyxl
 
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, send_from_directory
+import uuid
+import shutil
 
 # document = Document("files\SCE3-2023-079_Corrected.docx")
 # files\SCE3-2023-094_Corrected.docx
@@ -47,7 +49,7 @@ class CETExtraction():
     
     def _get_paper_id(self, filename: str):
         # return filename.split('-')[-1].split('_')[0] + '.pdf' # SCE
-        return filename.split('/')[-1].split('_')[1].split('_')[0] + '.pdf'
+        return filename.split('//')[-1].split('_')[1].split('_')[0] + '.pdf'
 
     def _get_manuscript_info(self, filename, paragraph):
         page_number = int(self._get_page_number(filename = filename))
@@ -139,7 +141,9 @@ class CETManuscripts():
     def __init__(self, file_list: List[str], file_path: str):
         self.all_info = []
         for file_name in file_list:
-            filepath = f"{file_path}/{file_name}"
+            filename = file_name.filename
+            filepath = f"{file_path}//{filename}"
+            # filepath = f"{filename}"
             self.all_info.append(CETExtraction(filename = filepath)) 
     
     def write_to_excel(self, file_path: str):
@@ -166,52 +170,74 @@ class CETManuscripts():
         
         df = pd.DataFrame(rows_of_data_in_excel)
         # df.to_excel(f'{file_path}//PRES23_CET_Info.xlsx', sheet_name = 'LAVOLI')
-        df.to_excel(f'{file_path}/PRES23_CET_Info.xlsx', sheet_name = 'LAVORI')
+        print(os.path.dirname(file_path))
+        os.makedirs('downloads')
+        df.to_excel(f"downloads//PRES23_CET_Info.xlsx", sheet_name = 'LAVORI')
+        pass
 
 # Creating a Web App
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # @app.route('/', methods = ['GET'])
-def get_CET_info(path: str):
+def get_CET_info(path: str = None, request = None):
     # path = askdirectory(title='Select Folder') # shows dialog box and return the path
     # file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file)]
     try:
-        file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file and 'PRES23' in file)]
-        # file_list = ["+PRES23_0184_M_v_03_Author.docx"]
-        # file_list = ["+PRES23_0340_rev_M_v2_Review.docx"]
-        # file_list = ["+PRES23_0002_rev_M_v2_Review.docx"]
+        # Run on local
+        # file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file and 'PRES23' in file)]
+
+        file_list = request.files.getlist('files[]')
+
         CET_manuscripts = CETManuscripts(file_list = file_list, file_path = path)
         CET_manuscripts.write_to_excel(path)
+        # download_file(path, filename = "PRES23_CET_Info.xlsx")
 
         response = {
             'message': f"Success! All CET info in the folder is extracted and saved to {path}/PRES23_CET_Info.xlsx"
         }
 
+        # shutil.rmtree(path, ignore_errors= True)
         return jsonify(response), 200
 
     except Exception as e:
         response = {
             'message': f"Errors! {e}"
         }
+        shutil.rmtree(path, ignore_errors= True)
         return str(e), 400
 
 @app.route('/', methods=['GET', 'POST'])
 def get_folder_path():
     if request.method == 'POST':
-        folder_path = request.form['folder_path']
-        folder_path = folder_path.replace('\\', '/')
-        response = get_CET_info(folder_path)
+        # folder_path = request.form['folder_path']
+        # folder_path = folder_path.replace('\\', '//')
+        folder_name = str(uuid.uuid4())  # Generate a unique folder name using UUID
+        folder_path = os.path.join(app.config['UPLOAD_FOLDER'], folder_name)
+        shutil.rmtree(app.config['UPLOAD_FOLDER'], ignore_errors= True) # Remove the folders before it is started
+        shutil.rmtree('downloads', ignore_errors= True)
+        os.makedirs(folder_path)
+
+        for file in request.files.getlist('files[]'):
+            filename = file.filename
+            file.save(os.path.join(folder_path, filename))
+
+
+        response = get_CET_info(path = folder_path, request = request)
         if response[1] == 200:
-            excel_path = f"{folder_path}\PRES23_CET_Info.xlsx"
                 # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
                 # return f"The folder path you entered is: {folder_path}"
-            return render_template('index.html', success = True, folder_path = excel_path)
+            return render_template('index.html', success = True)
         else:
             return render_template('index.html', error = True, message = response[0])
     return render_template('index.html')
 # Running the app
 # app.run(host = '0.0.0.0', port = 5000)
 
+@app.route('/downloads/<filename>')
+def download_file(filename):
+    
+    return send_from_directory('downloads', filename, as_attachment=True)
 
 if __name__ == "__main__":
     app.run(host = '0.0.0.0', debug = False)

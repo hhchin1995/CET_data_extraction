@@ -4,10 +4,10 @@
     <title>Folder Path Input</title>
 </head>
 <body>
-    <h1>Enter the folder path:</h1>
-    <form method="POST">
-        <input type="text" name="folder_path" placeholder="Enter folder path" required>
-        <button type="submit">Submit</button>
+    <h1>Upload Your CET docx files:</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="files[]" multiple required>
+        <button type="submit">Upload</button>
     </form>
     {% if error %}
         {% if message %} 
@@ -15,9 +15,12 @@
         {% endif %}
     {% endif %}
     {% if success %}
-        {% if folder_path %}
-            <p id="success-message" style="color: green;">Success! All CET info is created in {{ folder_path }} </p>
-        {% endif %}
+            <p id="success-message" style="color: green;">Success! All CET info is created and extracted!</p>
+            <div>
+                <a href="{{ url_for('download_file' , filename='PRES23_CET_Info.xlsx') }}" style="color: rgb(167, 159, 4);">Download extracted info here</a>
+            </div>
     {% endif %}
+
+
 </body>
 </html>
