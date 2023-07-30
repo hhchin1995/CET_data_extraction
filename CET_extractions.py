@@ -166,7 +166,7 @@ class CETManuscripts():
         
         df = pd.DataFrame(rows_of_data_in_excel)
         # df.to_excel(f'{file_path}//PRES23_CET_Info.xlsx', sheet_name = 'LAVOLI')
-        df.to_excel(f'{file_path}//PRES23_CET_Info.xlsx', sheet_name = 'LAVORI')
+        df.to_excel(f'{file_path}\PRES23_CET_Info.xlsx', sheet_name = 'LAVORI')
 
 # Creating a Web App
 app = Flask(__name__)
