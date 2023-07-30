@@ -47,7 +47,7 @@ class CETExtraction():
     
     def _get_paper_id(self, filename: str):
         # return filename.split('-')[-1].split('_')[0] + '.pdf' # SCE
-        return filename.split('/')[-1].split('_')[1].split('_')[0] + '.pdf'
+        return filename.split('//')[-1].split('_')[1].split('_')[0] + '.pdf'
 
     def _get_manuscript_info(self, filename, paragraph):
         page_number = int(self._get_page_number(filename = filename))
@@ -191,7 +191,7 @@ def get_CET_info(path: str):
 
     except Exception as e:
         response = {
-            'message': f"Errors!"
+            'message': f"Errors! {e}"
         }
         return jsonify(response), 400
 
@@ -206,7 +206,7 @@ def get_folder_path():
                 # return f"The folder path you entered is: {folder_path}"
             return render_template('index.html', success = True, folder_path = excel_path)
         else:
-            return render_template('index.html', error = True)
+            return render_template('index.html', error = True, message = response[0])
     return render_template('index.html')
 # Running the app
 # app.run(host = '0.0.0.0', port = 5000)
