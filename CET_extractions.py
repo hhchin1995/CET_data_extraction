@@ -21,6 +21,8 @@ from flask import Flask, jsonify, request
 # document = Document("files\SCE3-2023-079_Corrected.docx")
 # files\SCE3-2023-094_Corrected.docx
 # files\SCE3-2023-079_Corrected.docx
+if os.environ.get('DISPLAY','') == '':
+    os.environ.__setitem__('DISPLAY', ':0.0')
 
 class CETExtraction():
     authors: Authors
