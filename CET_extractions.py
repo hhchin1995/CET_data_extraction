@@ -141,7 +141,7 @@ class CETExtraction():
                 author_label.append(corresponding_author[-r])
 
         
-        authors = [word.strip().split('*')[0] for word in paragraph.text.split(',') if len(word.strip()) > 1] # Split the text, and avoid getting the superscripts, and split from '*'
+        authors = [word.strip().split('*')[0] for word in re.split(',|，', paragraph.text) if len(word.strip()) > 1] # Split the text, and avoid getting the superscripts, and split from '*'
 
         is_contain_superscripts = False
         for r, run in enumerate(paragraph.runs):
