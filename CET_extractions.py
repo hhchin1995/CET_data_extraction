@@ -2,7 +2,7 @@ from docx.document import Document
 from docx import Document
 from author import Authors, CorrespondingAuthor
 from manuscript import ManuscriptInfo
-from typing import List
+from typing import List, Dict
 
 #specific to extracting information from word documents
 import os
@@ -21,36 +21,47 @@ import uuid
 import shutil
 import io
 
-# document = Document("files\SCE3-2023-079_Corrected.docx")
-# files\SCE3-2023-094_Corrected.docx
-# files\SCE3-2023-079_Corrected.docx
-if os.environ.get('DISPLAY','') == '':
-    os.environ.__setitem__('DISPLAY', 'localhost:0.0')
 
 class CETExtraction():
     authors: Authors
+    corresponding_author: Authors
     manuscript_info: ManuscriptInfo
     paper_id : str
+    affiliations: Dict[any, any]
+    email: str
+    _is_contain_superscripts: bool
 
     def __init__(self, filename: str):
         document = Document(filename)
         self.paper_id = self._get_paper_id(filename = filename)
-        print(self.paper_id)
+        print("\n" + self.paper_id)
         for p, paragraph in enumerate(document.paragraphs):
             if paragraph.style.name == 'CET Authors' or p == 1:
-                # self.authors = self._get_authors_names(paragraph)
-                self.authors = self._get_authors_names_2(paragraph)
+                self.authors, corresponding_author_affiliation_label = self._get_authors_names_2(paragraph)
                 break
 
         for p, paragraph in enumerate(document.paragraphs):
             if p == 0:
                 self.manuscript_info = self._get_manuscript_info(filename, paragraph)
                 break
+        
+        self.affiliations = self._get_affiliations(document.paragraphs)
+        self.email = self._get_email(document.paragraphs)
 
-    
+        corresponding_author_affiliations = ''
+        if corresponding_author_affiliation_label:
+            corresponding_author_affiliation_label.reverse()
+            for label in corresponding_author_affiliation_label:
+                corresponding_author_affiliations += ''.join(self.affiliations[label]) if len(corresponding_author_affiliations) == 0 else "\n" + ''.join(self.affiliations[label])
+        else:
+            corresponding_author_affiliations += ''.join(self.affiliations)
+        
+        self.authors.corresponding_author.affiliation = corresponding_author_affiliations
+        self.authors.corresponding_author.email = self.email
+        
+                
     def _get_paper_id(self, filename: str):
         # return filename.split('-')[-1].split('_')[0] + '.pdf' # SCE
-        # return filename.split('//')[-1].split('_')[1].split('_')[0] + '.pdf'
         return filename.filename.split('_')[1].split('_')[0] + '.pdf'
 
     def _get_manuscript_info(self, filename, paragraph):
@@ -68,29 +79,88 @@ class CETExtraction():
             # raise
             page = 0
             pass
-        # print("Word Page count: " + page)
         return page
+    
+    def _get_affiliations(self, paragraphs):
+        affiliations = {}
+        superscript = ''
+        for p, paragraph in enumerate(paragraphs):
+            if paragraph.style.name == 'CET Address' and '@' not in paragraph.text:
+                if self._is_contain_superscripts:
+                    is_contain_superscripts = False
+                    for r, run in enumerate(paragraph.runs):
+                        if run.font.superscript is True:
+                            is_contain_superscripts = True
+                            superscript = run.text.strip()
+                            break
+                    
+                    if is_contain_superscripts:
+                        for text in paragraph.text[1:].strip().split("\n"):
+                            affiliation_to_used = text
+                            affiliations[superscript] = affiliation_to_used if superscript not in affiliations else affiliations[superscript] + affiliation_to_used 
+                    else:
+                        for t, text in enumerate(paragraph.text.strip().split("\n")):
+                            affiliation_to_used = text
+                            affiliations[superscript] += text if (t == 0) else text
+
+                else:
+                    for text in paragraph.text.strip().split("\n"):
+                        if affiliations:
+                            affiliations = list(affiliations)
+                            affiliations[-1] += text
+                            affiliations = set(affiliations)
+                        else:
+                            affiliations = {text}
+        
+        print(f'Affiliations: {affiliations}')
+        return affiliations
+
+    def _get_email(self, paragraphs):
+        for p, paragraph in enumerate(paragraphs):
+            if (
+
+                ('@' in paragraph.text) and
+                paragraph.text != ' '
+            ):
+                print(f'Email: {paragraph.text.strip()}')
+                return paragraph.text.strip()
+        pass
 
     def _get_authors_names_2(self, paragraph):
+        if '*' not in paragraph.text:
+            raise Exception('No corresponding authors!')
         authors = []
-        corresponding_author = [paragraph.text.strip().split('*')[0]]
-        corresponding_author = [author.split(',')[0] for author in corresponding_author]
+        corresponding_author = paragraph.text.strip().split('*')[0]
+        corresponding_author = corresponding_author.split(',')
+        author_label = []
+        for r in range(1, len(corresponding_author) + 1):
+            if len(corresponding_author[-r]) > 1:
+                corresponding_author = corresponding_author[-r]
+                break
+            elif len(corresponding_author[-r]) == 1 and ' ' != corresponding_author[-r]:
+                author_label.append(corresponding_author[-r])
+
+        
         authors = [word.strip().split('*')[0] for word in paragraph.text.split(',') if len(word.strip()) > 1] # Split the text, and avoid getting the superscripts, and split from '*'
 
         is_contain_superscripts = False
         for r, run in enumerate(paragraph.runs):
-            if run.font.superscript is True:
+            if run.font.superscript is True and run.text != '*':
                 is_contain_superscripts = True
                 break
         
         if is_contain_superscripts:
             authors = [author[:-1] for author in authors]
-            corresponding_author = [author[:-1] for author in corresponding_author]
+            author_label.append(corresponding_author[-1])
+            corresponding_author = [corresponding_author[:-1]] 
             pass
         
         print(authors)
-        return Authors(author_list = authors, corresponding_author = corresponding_author)
-    
+        self._is_contain_superscripts = is_contain_superscripts
+        corresponding_author = [corresponding_author] if type(corresponding_author) != list else corresponding_author
+        return Authors(author_list = authors, corresponding_author = corresponding_author), author_label
+
+
     def _get_authors_names(self, paragraph):
     # ---------------------------------------
     # Author names
@@ -143,17 +213,15 @@ class CETManuscripts():
     def __init__(self, file_list: List[str], file_path: str):
         self.all_info = []
         for file_name in file_list:
-            # file_name.read()
-            # document = Document(file_name)
-            # filename = file_name.filename
-            # filepath = f"{file_path}//{filename}"
-            # filepath = f"{filename}"
             self.all_info.append(CETExtraction(filename = file_name)) 
-        shutil.rmtree(app.config['UPLOAD_FOLDER'], ignore_errors= True)
     
     def write_to_excel(self, file_path: str):
-        rows_of_data_in_excel = []
+        rows_of_data_in_excel_lavori = []
+        rows_of_data_in_excel_corresponding = []
         for manuscript_info in self.all_info:
+        #______________________
+        #LAVORI
+        #______________________
             # (1): paper title
             # (2): page count
             # (3): paper id.pdf
@@ -171,12 +239,42 @@ class CETManuscripts():
                 row.append(manuscript_info.authors.first_name[author_ind])
                 row.append(manuscript_info.authors.last_name[author_ind])
 
-            rows_of_data_in_excel.append(row)
+            rows_of_data_in_excel_lavori.append(row)
         
-        df = pd.DataFrame(rows_of_data_in_excel)
-        # df.to_excel(f'{file_path}//PRES23_CET_Info.xlsx', sheet_name = 'LAVOLI')
+        #______________________
+        #CORRESPONDING
+        #______________________        
+            # (1): paper title
+            # (2): first name
+            # (3): last name
+            # (4): affiliation
+            # (5): email
+            row2 = [
+                manuscript_info.manuscript_info.paper_title,
+                manuscript_info.authors.corresponding_author.first_name[0],
+                manuscript_info.authors.corresponding_author.last_name[0],
+                manuscript_info.authors.corresponding_author.affiliation,
+                manuscript_info.authors.corresponding_author.email,
+            ]
+
+            rows_of_data_in_excel_corresponding.append(row2)
+        
         os.makedirs('downloads')
-        df.to_excel(f"downloads//PRES23_CET_Info.xlsx", sheet_name = 'LAVORI')
+
+ 
+        df = pd.DataFrame(rows_of_data_in_excel_lavori)
+        # df.to_excel(f"downloads//PRES23_CET_Info.xlsx", sheet_name = 'LAVORI')
+       
+        df2 = pd.DataFrame(rows_of_data_in_excel_corresponding)
+        with pd.ExcelWriter(f"downloads//PRES23_CET_Info.xlsx", engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name = 'LAVORI')
+            df2.to_excel(writer, sheet_name = 'CORRESPONDING')
+            # workbook  = writer.book
+            # worksheet = writer.sheets['CORRESPONDING']
+            # cell_format = workbook.add_format({'text_wrap': True})
+            # worksheet.set_column('A:Z', cell_format=cell_format)
+        # df2.to_excel(f"downloads//PRES23_CET_Info.xlsx", sheet_name = 'CORRESPONDING')
+        
         pass
 
 # Creating a Web App
@@ -185,8 +283,6 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # @app.route('/', methods = ['GET'])
 def get_CET_info(path: str = None, request = None):
-    # path = askdirectory(title='Select Folder') # shows dialog box and return the path
-    # file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file)]
     try:
         # Run on local
         # file_list = [file for file in os.listdir(path) if ('docx' in file and '$' not in file and 'PRES23' in file)]
@@ -195,49 +291,31 @@ def get_CET_info(path: str = None, request = None):
 
         CET_manuscripts = CETManuscripts(file_list = file_list, file_path = path)
         CET_manuscripts.write_to_excel(path)
-        # download_file(path, filename = "PRES23_CET_Info.xlsx")
 
         response = {
             'message': f"Success! All CET info in the folder is extracted and saved to {path}/PRES23_CET_Info.xlsx"
         }
 
-        # shutil.rmtree(path, ignore_errors= True)
         return jsonify(response), 200
 
     except Exception as e:
         response = {
             'message': f"Errors! {e}"
         }
-        shutil.rmtree(path, ignore_errors= True)
         return str(e), 400
 
 @app.route('/', methods=['GET', 'POST'])
 def get_folder_path():
     if request.method == 'POST':
-        # folder_path = request.form['folder_path']
-        # folder_path = folder_path.replace('\\', '//')
-        # folder_name = str(uuid.uuid4())  # Generate a unique folder name using UUID
-        # folder_path = os.path.join(app.config['UPLOAD_FOLDER'], folder_name)
-        shutil.rmtree(app.config['UPLOAD_FOLDER'], ignore_errors= True) # Remove the folders before it is started
+        # Remove the folders before it is started
         shutil.rmtree('downloads', ignore_errors= True)
-        # os.makedirs(folder_path)
-
-        # Save files in uploads folder
-        # for file in request.files.getlist('files[]'):
-        #     filename = file.filename
-        #     file.save(os.path.join(folder_path, filename))
-
 
         response = get_CET_info(path = None, request = request)
         if response[1] == 200:
-                # Process the folder_path as needed (e.g., list files in the folder, perform operations, etc.)
-                # return f"The folder path you entered is: {folder_path}"
             return render_template('index.html', success = True)
         else:
             return render_template('index.html', error = True, message = response[0])
     return render_template('index.html')
-# Running the app
-# app.run(host = '0.0.0.0', port = 5000)
 
 @app.route('/downloads/<filename>')
 def download_file(filename):

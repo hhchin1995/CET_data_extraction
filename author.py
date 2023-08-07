@@ -8,11 +8,13 @@ class Authors:
     corresponding_author: List[str]
 
     def __init__(self, author_list: List[int], corresponding_author: List[int] = None):
+        if author_list is None:
+            return
         self.first_name = []
         self.last_name = []
         self.name = author_list
         self.no_of_authors = len(author_list)
-        self.corresponding_author = corresponding_author
+        self.corresponding_author = CorrespondingAuthor(corresponding_author)
         for author in author_list:
             last_name = author.split(' ')[-1]
             while last_name == '' or last_name == 'II' or last_name == 'Alwi':
@@ -34,3 +36,6 @@ class Authors:
 class CorrespondingAuthor(Authors):
     affiliation: str
     email: str
+
+    def __init__(self, author_list):
+        super().__init__(author_list)
