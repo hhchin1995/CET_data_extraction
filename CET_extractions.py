@@ -62,7 +62,8 @@ class CETExtraction():
                 
     def _get_paper_id(self, filename: str):
         # return filename.split('-')[-1].split('_')[0] + '.pdf' # SCE
-        return filename.filename.split('_')[1].split('_')[0] + '.pdf'
+        # return filename.filename.split('_')[1].split('_')[0] + '.pdf'
+        return filename.filename.split('.')[0] + '.pdf'
 
     def _get_manuscript_info(self, filename, paragraph):
         page_number = int(self._get_page_number(filename = filename))
@@ -85,7 +86,7 @@ class CETExtraction():
         affiliations = {}
         superscript = ''
         for p, paragraph in enumerate(paragraphs):
-            if paragraph.style.name == 'CET Address' and '@' not in paragraph.text:
+            if paragraph.style.name == 'CET Address' or paragraph.style.name == 'PRES Address' and '@' not in paragraph.text:
                 if self._is_contain_superscripts:
                     is_contain_superscripts = False
                     for r, run in enumerate(paragraph.runs):
